@@ -1,9 +1,45 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const apiKey = process.env.GOOGLE_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
+const modelsToTry = [
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-pro-latest',
+  'gemini-pro',
+  'gemini-1.0-pro-latest',
+  'gemini-1.0-pro'
+];
 
-export const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+export async function generateContentSafe(prompt: string): Promise<string | null> {
+  // Try both API keys
+  const keys = [
+    process.env.GOOGLE_API_KEY,
+    process.env.NEXT_PUBLIC_GOOGLE_API_KEY
+  ].filter(Boolean);
+
+  for (const key of keys) {
+    const genAI = new GoogleGenerativeAI(key!);
+
+    for (const modelName of modelsToTry) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      } catch (error) {
+        console.warn(`Failed with model ${modelName} using key ending in ...${key!.slice(-4)}:`, error);
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+export const model = (function () {
+  // Legacy export for existing code, tries to be safe but might fail
+  const key = process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_API_KEY || '';
+  return new GoogleGenerativeAI(key).getGenerativeModel({ model: 'gemini-pro-latest' });
+})();
 
 export async function generateSessionSummary(transcript: string) {
   const prompt = `
@@ -26,15 +62,15 @@ export async function generateSessionSummary(transcript: string) {
     }
   `;
 
+  const text = await generateContentSafe(prompt);
+
+  if (!text) return null;
+
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    // Extract JSON from potential markdown code blocks
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
   } catch (error) {
-    console.error('Gemini summary generation failed:', error);
+    console.error('Gemini summary parsing failed:', error);
     return null;
   }
 }

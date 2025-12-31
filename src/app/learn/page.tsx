@@ -2,34 +2,79 @@
 'use client';
 
 import { useState, useCallback, useEffect, Suspense } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { 
-  Mic, MicOff, Phone, PhoneOff, Volume2, Languages, 
+import {
+  Mic, MicOff, Phone, PhoneOff, Volume2, Languages,
   CheckCircle, PlayCircle, Lock, MoreVertical,
-  LogOut, User
+  LogOut, User, X, Send
 } from 'lucide-react';
+
 import { useConversation } from '@11labs/react';
 import { useVoiceMemory } from '@/hooks/useVoiceMemory';
+import { getCurriculumProgress, getLatestSession } from '@/lib/memory/sessionStore';
+import { Curriculum, RoadmapItem, curriculums } from '@/lib/curriculum';
+import Header from '@/components/Header';
 
 interface Message {
   id: string;
   type: 'ai' | 'user';
   content: string;
+  translation?: string;
+  isTranslating?: boolean;
   correction?: string;
   timestamp: Date;
 }
 
-import { curriculums } from '@/lib/curriculum';
 
 function LearnPageContent() {
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'spanish';
   const personality = searchParams.get('personality') || 'cheerful';
-  
-  const currentCurriculum = curriculums[lang.toLowerCase()] || curriculums.default;
-  
+
+  const [currentCurriculum, setCurrentCurriculum] = useState<Curriculum>(() => curriculums[lang.toLowerCase()] || curriculums.default);
+
+  // Load persisted curriculum and last session on mount
+  useEffect(() => {
+    const loadSessionData = async () => {
+      // Load Curriculum
+      const stored = await getCurriculumProgress(lang);
+      const baseCurriculum = curriculums[lang.toLowerCase()] || curriculums.default;
+
+      if (stored) {
+        setCurrentCurriculum({
+          ...baseCurriculum,
+          items: stored.items as RoadmapItem[]
+        });
+      }
+
+      // Load Latest Chat History
+      const lastSession = await getLatestSession(lang);
+      if (lastSession && lastSession.messages.length > 0) {
+        setMessages(lastSession.messages.map((m: any) => ({
+          id: uuidv4(),
+          type: m.role as 'ai' | 'user',
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+          correction: m.correction
+        })));
+      } else {
+        // Initial AI message if no history
+        setMessages([
+          {
+            id: '1',
+            type: 'ai',
+            content: baseCurriculum.initialMessage,
+            timestamp: new Date('2024-01-01T12:00:00')
+          }
+        ]);
+      }
+    };
+    loadSessionData();
+  }, [lang]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -42,6 +87,16 @@ function LearnPageContent() {
   // Update messages when language changes
   useEffect(() => {
     const newCurriculum = curriculums[lang.toLowerCase()] || curriculums.default;
+    // We don't necessarily want to reset items here if they were loaded from IDB
+    // but the initial messages and basic structure should update
+    setCurrentCurriculum(prev => {
+      const isSameLanguage = prev.level.toLowerCase().includes(lang.toLowerCase());
+      return {
+        ...newCurriculum,
+        items: isSameLanguage ? prev.items : newCurriculum.items
+      };
+    });
+
     setMessages([
       {
         id: '1',
@@ -58,6 +113,8 @@ function LearnPageContent() {
 
   const [agentConfig, setAgentConfig] = useState<{ systemPrompt: string; firstMessage: string } | null>(null);
   const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
+  const [isAITyping, setIsAITyping] = useState(false);
+
   const [nativeLanguage, setNativeLanguage] = useState('English');
   const [uiTranslations, setUiTranslations] = useState<Record<string, string>>({
     'practice': 'Conversation Practice',
@@ -85,7 +142,7 @@ function LearnPageContent() {
     const fetchTranslations = async () => {
       const nativeLang = localStorage.getItem('nativeLanguage') || 'English';
       setNativeLanguage(nativeLang);
-      
+
       if (nativeLang === 'English') return;
 
       try {
@@ -124,10 +181,10 @@ function LearnPageContent() {
         });
         const data = await response.json();
         setAgentConfig(data);
-        
+
         // Update the initial message
         setMessages([{
-          id: crypto.randomUUID(),
+          id: uuidv4(),
           type: 'ai',
           content: data.firstMessage,
           timestamp: new Date()
@@ -156,7 +213,7 @@ function LearnPageContent() {
       console.log('Message:', message);
       if (message.message) {
         setMessages(prev => [...prev, {
-          id: crypto.randomUUID(),
+          id: uuidv4(),
           type: message.source === 'user' ? 'user' : 'ai',
           content: message.message as string,
           timestamp: new Date()
@@ -176,7 +233,7 @@ function LearnPageContent() {
       // Try to send context to the agent
       const contextMessage = `System Update: ${agentConfig.systemPrompt}`;
       console.log('Sending context:', contextMessage);
-      
+
       // Attempt to send hidden context message if supported
       // @ts-ignore
       if (typeof conversation.sendMessage === 'function') {
@@ -189,13 +246,13 @@ function LearnPageContent() {
   const startConversation = useCallback(async () => {
     try {
       const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
-      
+
       if (!agentId) {
         throw new Error('NEXT_PUBLIC_ELEVENLABS_AGENT_ID is missing');
       }
 
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       await conversation.startSession({
         agentId: agentId,
         // @ts-ignore
@@ -208,9 +265,18 @@ function LearnPageContent() {
 
   const endConversation = useCallback(async () => {
     await conversation.endSession();
-    // Save session to memory
-    await saveSessionToMemory(messages, lang, personality);
-  }, [conversation, messages, lang, personality, saveSessionToMemory]);
+    // Save session to memory and update curriculum
+    await saveSessionToMemory(messages, lang, personality, currentCurriculum.topic);
+
+    // Refresh curriculum from IDB to show updates
+    const stored = await getCurriculumProgress(lang);
+    if (stored) {
+      setCurrentCurriculum(prev => ({
+        ...prev,
+        items: stored.items as RoadmapItem[]
+      }));
+    }
+  }, [conversation, messages, lang, personality, saveSessionToMemory, currentCurriculum.topic]);
 
   const toggleMute = useCallback(() => {
     if (isMuted) {
@@ -221,11 +287,41 @@ function LearnPageContent() {
     setIsMuted(!isMuted);
   }, [conversation, isMuted]);
 
+  const handleTranslate = async (messageId: string, content: string) => {
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, isTranslating: true } : msg
+    ));
+
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: content,
+          targetLanguage: nativeLanguage
+        })
+      });
+      const data = await response.json();
+      if (data.translation) {
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, translation: data.translation, isTranslating: false } : msg
+        ));
+      } else {
+        throw new Error(data.error || 'Translation failed');
+      }
+    } catch (error) {
+      console.error('Failed to translate:', error);
+      setMessages(prev => prev.map(msg =>
+        msg.id === messageId ? { ...msg, isTranslating: false } : msg
+      ));
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-    
+
     const newMessage: Message = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       type: 'user',
       content: inputValue,
       timestamp: new Date()
@@ -233,47 +329,50 @@ function LearnPageContent() {
 
     setMessages(prev => [...prev, newMessage]);
     setInputValue('');
-    
-    // Send text to ElevenLabs if supported
-    // @ts-ignore
-    if (isConnected && typeof conversation.sendMessage === 'function') {
+
+    // Send text to AI
+    if (isConnected) {
       // @ts-ignore
-      await conversation.sendMessage(inputValue);
+      await conversation.sendUserMessage(inputValue);
+    } else {
+      // Use text-only chat
+      setIsAITyping(true);
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [...messages, newMessage],
+            language: lang,
+            personality: personality,
+            topic: currentCurriculum.topic,
+            level: currentCurriculum.level
+          })
+        });
+        const data = await response.json();
+        if (data.content) {
+          setMessages(prev => [...prev, {
+            id: uuidv4(),
+            type: 'ai',
+            content: data.content,
+            timestamp: new Date()
+          }]);
+        }
+      } catch (error) {
+        console.error('Failed to send text message:', error);
+      } finally {
+        setIsAITyping(false);
+      }
     }
+
   };
 
   const completedCount = currentCurriculum.items.filter(item => item.status === 'completed').length;
   const progressPercentage = Math.round((completedCount / currentCurriculum.items.length) * 100);
 
   return (
-    <div className="min-h-screen bg-dark-900 dark flex flex-col">
-      {/* Navigation */}
-      <nav className="bg-dark-900/80 backdrop-blur-lg border-b border-white/10 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">MisSpoke</span>
-          </Link>
-          
-          <div className="flex items-center gap-6">
-            <Link href="/" className="text-gray-400 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/learn" className="text-primary-400 font-medium">Lessons</Link>
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors">Profile</Link>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-gray-300 hover:bg-dark-700 transition-colors">
-              <LogOut className="w-4 h-4" />
-              Log Out
-            </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-dark-900 dark flex flex-col pt-20">
+      <Header />
 
       {/* Main Content */}
       <div className="flex-1 flex">
@@ -307,36 +406,45 @@ function LearnPageContent() {
                       <Mic className="w-5 h-5 text-white" />
                     </div>
                   )}
-                  
+
                   <div className={`max-w-md ${message.type === 'user' ? 'order-first' : ''}`}>
                     <p className="text-xs text-gray-500 mb-1">
                       {message.type === 'ai' ? 'MisSpoke AI' : 'You'}
                     </p>
-                    <div className={`rounded-2xl px-4 py-3 ${
-                      message.type === 'ai' 
-                        ? 'bg-dark-800 text-white' 
-                        : 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
-                    }`}>
+                    <div className={`rounded-2xl px-4 py-3 ${message.type === 'ai'
+                      ? 'bg-dark-800 text-white'
+                      : 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
+                      }`}>
                       <p>{message.content}</p>
                       {message.correction && (
                         <p className="mt-2 text-green-400 italic">&apos;{message.correction}&apos;</p>
                       )}
                     </div>
-                    
+
                     {message.type === 'ai' && (
                       <div className="flex gap-2 mt-2">
                         <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-800 text-gray-400 hover:text-white text-sm transition-colors">
                           <Volume2 className="w-4 h-4" />
                           {t('listen')}
                         </button>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-800 text-gray-400 hover:text-white text-sm transition-colors">
+                        <button
+                          onClick={() => handleTranslate(message.id, message.content)}
+                          disabled={message.isTranslating}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-800 text-gray-400 hover:text-white text-sm transition-colors"
+                        >
                           <Languages className="w-4 h-4" />
-                          {t('translate')}
+                          {message.isTranslating ? 'Translating...' : t('translate')}
                         </button>
                       </div>
                     )}
+                    {message.translation && (
+                      <div className="mt-2 p-3 rounded-xl bg-primary-500/10 border border-primary-500/20 text-sm italic text-primary-300 shadow-inner">
+                        <span className="opacity-50 text-[10px] uppercase font-bold block mb-1">Translation ({nativeLanguage})</span>
+                        "{message.translation}"
+                      </div>
+                    )}
                   </div>
-                  
+
                   {message.type === 'user' && (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-400 flex-shrink-0 flex items-center justify-center">
                       <User className="w-5 h-5 text-white" />
@@ -359,7 +467,7 @@ function LearnPageContent() {
                   placeholder={t('placeholder')}
                   className="w-full bg-dark-800 text-white rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
-                <button 
+                <button
                   onClick={handleSendMessage}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary-400 transition-colors"
                 >
@@ -368,27 +476,25 @@ function LearnPageContent() {
                   </svg>
                 </button>
               </div>
-              
+
               <button
                 onClick={isConnected ? endConversation : startConversation}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                  isConnected 
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${isConnected
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+                  }`}
               >
                 <Phone className="w-5 h-5" />
                 {isConnected ? t('connected') : t('join')}
               </button>
-              
+
               <button
                 onClick={isConnected ? endConversation : undefined}
                 disabled={!isConnected}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${
-                  isConnected
-                    ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
-                    : 'bg-dark-800 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all ${isConnected
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
+                  : 'bg-dark-800 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 <PhoneOff className="w-5 h-5" />
                 {t('leave')}
@@ -405,15 +511,15 @@ function LearnPageContent() {
               <MoreVertical className="w-5 h-5" />
             </button>
           </div>
-          
+
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2">
               <span className="text-gray-400">{currentCurriculum.level}</span>
               <span className="text-green-400 font-medium">{progressPercentage}% {t('complete')}</span>
             </div>
             <div className="progress-bar">
-              <div 
-                className="progress-bar-fill" 
+              <div
+                className="progress-bar-fill"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -423,21 +529,19 @@ function LearnPageContent() {
             {currentCurriculum.items.map((item) => (
               <div
                 key={item.id}
-                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
-                  item.status === 'in-progress'
-                    ? 'bg-primary-500/20 border border-primary-500/30'
-                    : item.status === 'completed'
+                className={`flex items-center gap-3 p-3 rounded-xl transition-all ${item.status === 'in-progress'
+                  ? 'bg-primary-500/20 border border-primary-500/30'
+                  : item.status === 'completed'
                     ? 'bg-dark-800'
                     : 'bg-dark-800/50'
-                }`}
+                  }`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  item.status === 'completed'
-                    ? 'bg-green-500/20 text-green-400'
-                    : item.status === 'in-progress'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.status === 'completed'
+                  ? 'bg-green-500/20 text-green-400'
+                  : item.status === 'in-progress'
                     ? 'bg-primary-500 text-white'
                     : 'bg-dark-700 text-gray-500'
-                }`}>
+                  }`}>
                   {item.status === 'completed' ? (
                     <CheckCircle className="w-5 h-5" />
                   ) : item.status === 'in-progress' ? (
@@ -447,20 +551,18 @@ function LearnPageContent() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className={`font-medium ${
-                    item.status === 'locked' ? 'text-gray-500' : 'text-white'
-                  }`}>
+                  <p className={`font-medium ${item.status === 'locked' ? 'text-gray-500' : 'text-white'
+                    }`}>
                     {item.title}
                   </p>
-                  <p className={`text-xs ${
-                    item.status === 'completed'
-                      ? 'text-green-400'
-                      : item.status === 'in-progress'
+                  <p className={`text-xs ${item.status === 'completed'
+                    ? 'text-green-400'
+                    : item.status === 'in-progress'
                       ? 'text-primary-400'
                       : 'text-gray-500'
-                  }`}>
-                    {item.status === 'completed' ? t('completed') : 
-                     item.status === 'in-progress' ? t('in_progress') : t('locked')}
+                    }`}>
+                    {item.status === 'completed' ? t('completed') :
+                      item.status === 'in-progress' ? t('in_progress') : t('locked')}
                   </p>
                 </div>
               </div>
@@ -469,25 +571,156 @@ function LearnPageContent() {
         </div>
       </div>
 
+      {/* Voice Overlay */}
+      <AnimatePresence>
+        {isConnected && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-dark-900/95 backdrop-blur-2xl z-[100] flex flex-col items-center justify-center p-8"
+          >
+            <button
+              onClick={endConversation}
+              className="absolute top-8 right-8 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-10 h-10" />
+            </button>
+
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-white mb-4 tracking-tight">{t('practice')}</h2>
+              <div className="flex items-center justify-center gap-3">
+                <span className="px-3 py-1 rounded-full bg-primary-500/20 text-primary-400 text-sm font-medium border border-primary-500/30">
+                  {lang}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+                <span className="text-gray-400 font-medium">{currentCurriculum.topic}</span>
+              </div>
+            </div>
+
+            {/* Voice Chat Messages */}
+            <div className="w-full max-w-2xl flex-1 overflow-y-auto mb-8 px-4 space-y-4 scroll-smooth custom-scrollbar">
+              <AnimatePresence initial={false}>
+                {messages.map((message) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-[80%] rounded-2xl px-5 py-3 shadow-lg ${message.type === 'user'
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white'
+                      : 'bg-dark-800 text-white border border-white/5'
+                      }`}>
+                      <p className="text-sm font-medium opacity-70 mb-1">
+                        {message.type === 'ai' ? 'MisSpoke AI' : 'You'}
+                      </p>
+                      <p className="text-lg leading-relaxed">{message.content}</p>
+                      {message.type === 'ai' && (
+                        <button
+                          onClick={() => handleTranslate(message.id, message.content)}
+                          disabled={message.isTranslating}
+                          className="mt-2 text-xs text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
+                        >
+                          <Languages className="w-3 h-3" />
+                          {message.isTranslating ? 'Translating...' : (message.translation ? 'Re-translate' : 'Translate')}
+                        </button>
+                      )}
+                      {message.translation && (
+                        <p className="mt-2 pt-2 border-t border-white/10 text-sm italic text-gray-300 bg-white/5 p-2 rounded-lg">
+                          <span className="text-[9px] uppercase font-bold text-primary-400 block mb-1 opacity-70">{nativeLanguage}</span>
+                          {message.translation}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Voice Visualizer Area */}
+            <div className="relative flex flex-col items-center">
+              {/* Voice Visualizer */}
+              <div className="relative w-48 h-48 flex items-center justify-center mb-8">
+                {/* Outer Pulse Rings */}
+                <motion.div
+                  animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute inset-0 rounded-full bg-primary-500"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                  className="absolute inset-4 rounded-full bg-purple-500"
+                />
+
+                {/* Core Visualizer */}
+                <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 shadow-glow-lg flex items-center justify-center z-10">
+                  <div className="flex items-end gap-1 h-8">
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{
+                          height: isConnected && !isMuted ? [8, 32, 8] : 4
+                        }}
+                        transition={{
+                          duration: 0.5 + i * 0.1,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                        className="w-1 bg-white rounded-full"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-xl text-white font-semibold mb-6 tracking-wide">
+                  {conversation.isSpeaking ? `${personality} ${lang} tutor is speaking...` : "Listening carefully..."}
+                </p>
+
+                <div className="flex items-center justify-center gap-6">
+                  <button
+                    onClick={toggleMute}
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isMuted
+                      ? 'bg-red-500 text-white shadow-lg'
+                      : 'bg-dark-800 text-gray-300 hover:bg-dark-700 hover:text-white'
+                      }`}
+                  >
+                    {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                  </button>
+                  <button
+                    onClick={endConversation}
+                    className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all shadow-lg"
+                  >
+                    <PhoneOff className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Floating Mic Button */}
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         onClick={isConnected ? toggleMute : startConversation}
-        className={`fixed bottom-24 right-8 w-16 h-16 rounded-full shadow-glow-lg flex items-center justify-center transition-colors ${
-          isConnected
-            ? isMuted
-              ? 'bg-red-500'
-              : 'bg-gradient-to-br from-primary-500 to-purple-500'
+        className={`fixed bottom-24 right-8 w-16 h-16 rounded-full shadow-glow-lg flex items-center justify-center transition-colors z-[90] ${isConnected
+          ? isMuted
+            ? 'bg-red-500'
             : 'bg-gradient-to-br from-primary-500 to-purple-500'
-        }`}
+          : 'bg-gradient-to-br from-primary-500 to-purple-500'
+          }`}
       >
         {isMuted ? (
           <MicOff className="w-7 h-7 text-white" />
         ) : (
           <Mic className="w-7 h-7 text-white" />
         )}
-        
+
         {/* Pulse animation when connected */}
         {isConnected && !isMuted && (
           <>
@@ -499,6 +732,7 @@ function LearnPageContent() {
     </div>
   );
 }
+
 
 export default function LearnPage() {
   return (

@@ -1,26 +1,23 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateContentSafe } from '@/lib/openrouter/client';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 export async function POST(request: Request) {
   let language, personality, topic, level;
-  
+
   try {
-    console.log('API Key present:', !!process.env.GOOGLE_API_KEY);
     const body = await request.json();
     language = body.language;
     const nativeLanguage = body.nativeLanguage || 'English';
     personality = body.personality;
     topic = body.topic;
     level = body.level;
-    
+    const historyContext = body.historyContext || '';
+
     if (!language) {
       return NextResponse.json({ error: 'Language is required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
     const prompt = `
       Create a detailed system prompt for an AI language tutor with the following traits:
       - Target Language: ${language}
@@ -38,6 +35,11 @@ export async function POST(request: Request) {
       5. Keep responses concise (1-3 sentences) to maintain conversational flow.
       6. Engage the user with relevant questions about the topic.
 
+      ${historyContext ? `---
+      PREVIOUS CONTEXT (Use this to provide continuity):
+      ${historyContext}
+      ---` : ''}
+
       Also generate a welcoming "first message" to start the conversation.
 
       Output JSON format:
@@ -47,19 +49,21 @@ export async function POST(request: Request) {
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    
+    const text = await generateContentSafe(prompt);
+
+    if (!text) {
+      throw new Error('Failed to generate prompt from any model');
+    }
+
     // Clean up markdown code blocks if present
     const cleanText = text.replace(/```json\n|\n```/g, '').trim();
-    
+
     try {
       const data = JSON.parse(cleanText);
       return NextResponse.json(data);
     } catch (e) {
       console.error('Failed to parse Gemini response:', text);
-      return NextResponse.json({ 
+      return NextResponse.json({
         systemPrompt: `You are a ${personality} ${language} tutor. Teach ${topic}.`,
         firstMessage: `Hello! Let's learn ${language}.`
       });
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
       console.error('Error stack:', error.stack);
     }
     // Fallback to static prompt on error
-    return NextResponse.json({ 
+    return NextResponse.json({
       systemPrompt: `You are a ${personality || 'friendly'} ${language || 'language'} tutor. Teach ${topic || 'conversation'}.`,
       firstMessage: `Hello! Let's learn ${language || 'a new language'}.`
     });

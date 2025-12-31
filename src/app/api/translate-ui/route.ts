@@ -1,7 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateContentSafe } from '@/lib/openrouter/client';
 import { NextResponse } from 'next/server';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
 
 const uiKeys = {
   'practice': 'Conversation Practice',
@@ -28,8 +27,6 @@ export async function POST(request: Request) {
       return NextResponse.json(uiKeys);
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
     const prompt = `
       Translate the following UI strings to ${targetLanguage}.
       Return ONLY a valid JSON object where the keys are the same as the input keys, and the values are the translations.
@@ -39,13 +36,13 @@ export async function POST(request: Request) {
       ${JSON.stringify(uiKeys, null, 2)}
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-    
+    const text = await generateContentSafe(prompt);
+
+    if (!text) throw new Error('Failed to translate');
+
     // Clean up markdown code blocks if present
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
+
     const translations = JSON.parse(cleanText);
 
     return NextResponse.json(translations);

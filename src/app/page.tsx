@@ -4,31 +4,12 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mic, Globe, Sparkles, Users, MessageCircle, Plane, Coffee, Briefcase, ShoppingBag, Utensils } from 'lucide-react';
+import Header from '@/components/Header';
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-bold text-dark-900">MisSpoke</span>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="#features" className="text-dark-600 hover:text-dark-900 transition-colors">Features</Link>
-            <Link href="#missions" className="text-dark-600 hover:text-dark-900 transition-colors">Missions</Link>
-            <Link href="#testimonials" className="text-dark-600 hover:text-dark-900 transition-colors">Stories</Link>
-          </div>
-          
-          <Link href="/native-language" className="btn-primary flex items-center gap-2">
-            Get Started <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </nav>
+      <Header />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6">
@@ -68,7 +49,7 @@ export default function LandingPage() {
               </div>
             </div>
           </motion.div>
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -125,7 +106,7 @@ export default function LandingPage() {
               AI-driven conversation practice that adapts to your unique learning style
             </p>
           </motion.div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
@@ -185,7 +166,7 @@ export default function LandingPage() {
               View All <ArrowRight className="w-4 h-4" />
             </Link>
           </motion.div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               { icon: <Coffee className="w-6 h-6" />, title: 'Café Order', image: 'coffee', difficulty: 'Beginner' },
@@ -234,7 +215,7 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl font-bold text-dark-900 mb-4">Success Stories</h2>
           </motion.div>
-          
+
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {

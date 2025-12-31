@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, Clock, Users, Flame, BookOpen, Mic, PenTool } from 'lucide-react';
+import { ArrowRight, Clock, Users, Flame, BookOpen, Mic, PenTool, X, CheckCircle, PlayCircle, Lock } from 'lucide-react';
+import { curriculums } from '@/lib/curriculum';
+import Header from '@/components/Header';
 
 interface Language {
   id: string;
@@ -119,6 +121,7 @@ type FilterType = 'All' | 'Beginner' | 'Intermediate' | 'Advanced';
 export default function LanguagesPage() {
   const [selectedLanguage, setSelectedLanguage] = useState<Language | null>(null);
   const [filter, setFilter] = useState<FilterType>('All');
+  const [showCurriculum, setShowCurriculum] = useState(false);
 
   const filteredLanguages = languages.filter(lang => {
     if (filter === 'All') return true;
@@ -129,30 +132,8 @@ export default function LanguagesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-dark-900 dark">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-dark-900/80 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg flex items-center justify-center">
-              <Mic className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-bold text-white">MisSpoke</span>
-          </Link>
-          
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-gray-400 hover:text-white transition-colors">Home</Link>
-            <Link href="/languages" className="text-primary-400 font-medium">Courses</Link>
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors">Community</Link>
-            <Link href="#" className="text-gray-400 hover:text-white transition-colors">Profile</Link>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button className="text-gray-400 hover:text-white transition-colors px-4 py-2">Log In</button>
-            <button className="btn-primary px-4 py-2">Sign Up</button>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-dark-900 dark pt-20">
+      <Header />
 
       {/* Main Content */}
       <main className="pt-24 pb-32 px-6">
@@ -182,11 +163,10 @@ export default function LanguagesPage() {
               <button
                 key={filterOption}
                 onClick={() => setFilter(filterOption)}
-                className={`px-5 py-2.5 rounded-full font-medium transition-all ${
-                  filter === filterOption
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-dark-800 text-gray-400 hover:bg-dark-700 hover:text-white'
-                }`}
+                className={`px-5 py-2.5 rounded-full font-medium transition-all ${filter === filterOption
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-dark-800 text-gray-400 hover:bg-dark-700 hover:text-white'
+                  }`}
               >
                 {filterOption}
               </button>
@@ -202,11 +182,10 @@ export default function LanguagesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.05 }}
                 onClick={() => setSelectedLanguage(language)}
-                className={`glass rounded-2xl p-5 cursor-pointer transition-all ${
-                  selectedLanguage?.id === language.id
-                    ? 'card-selected'
-                    : 'hover:border-white/20'
-                }`}
+                className={`glass rounded-2xl p-5 cursor-pointer transition-all ${selectedLanguage?.id === language.id
+                  ? 'card-selected'
+                  : 'hover:border-white/20'
+                  }`}
               >
                 {/* Flag & Name */}
                 <div className="flex items-start justify-between mb-4">
@@ -250,8 +229,8 @@ export default function LanguagesPage() {
                     <span className="text-white font-medium">{language.popularity}%</span>
                   </div>
                   <div className="progress-bar">
-                    <div 
-                      className="progress-bar-fill" 
+                    <div
+                      className="progress-bar-fill"
                       style={{ width: `${language.popularity}%` }}
                     />
                   </div>
@@ -290,11 +269,14 @@ export default function LanguagesPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button className="px-6 py-3 rounded-xl bg-dark-700 text-white font-medium hover:bg-dark-600 transition-colors flex items-center gap-2">
+              <button
+                onClick={() => setShowCurriculum(true)}
+                className="px-6 py-3 rounded-xl bg-dark-700 text-white font-medium hover:bg-dark-600 transition-colors flex items-center gap-2"
+              >
                 <BookOpen className="w-5 h-5" />
                 View Curriculum
               </button>
-              <Link 
+              <Link
                 href={`/personalities?lang=${selectedLanguage.id}`}
                 className="btn-primary px-6 py-3 flex items-center gap-2"
               >
@@ -304,6 +286,103 @@ export default function LanguagesPage() {
           </div>
         </motion.div>
       )}
+      {/* Curriculum Modal */}
+      <AnimatePresence>
+        {showCurriculum && selectedLanguage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-dark-900/90 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-dark-800 border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-glow-lg"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-dark-800/50">
+                <div className="flex items-center gap-4">
+                  <span className="text-4xl">{selectedLanguage.flag}</span>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">{selectedLanguage.name} Curriculum</h2>
+                    <p className="text-gray-400">{curriculums[selectedLanguage.id]?.level || 'Loading...'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCurriculum(false)}
+                  className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6 bg-dark-900/20">
+                <div className="mb-6 bg-primary-500/10 border border-primary-500/20 rounded-2xl p-4">
+                  <p className="text-primary-300 font-medium mb-1">🔥 Current Focus:</p>
+                  <p className="text-white text-lg font-bold">{curriculums[selectedLanguage.id]?.topic}</p>
+                </div>
+
+                <div className="space-y-3">
+                  {(curriculums[selectedLanguage.id]?.items || curriculums.default.items).map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${item.status === 'in-progress'
+                        ? 'bg-primary-500/10 border-primary-500/30'
+                        : 'bg-dark-800/50 border-white/5'
+                        }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${item.status === 'completed'
+                        ? 'bg-green-500/20 text-green-400'
+                        : item.status === 'in-progress'
+                          ? 'bg-primary-500 text-white shadow-glow-sm'
+                          : 'bg-dark-700 text-gray-500'
+                        }`}>
+                        {item.status === 'completed' ? (
+                          <CheckCircle className="w-6 h-6" />
+                        ) : item.status === 'in-progress' ? (
+                          <PlayCircle className="w-6 h-6" />
+                        ) : (
+                          <Lock className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className={`text-lg font-bold ${item.status === 'locked' ? 'text-gray-500' : 'text-white'
+                          }`}>
+                          {item.title}
+                        </p>
+                        <p className={`text-sm ${item.status === 'completed' ? 'text-green-400' :
+                          item.status === 'in-progress' ? 'text-primary-400' : 'text-gray-500'
+                          }`}>
+                          {item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('-', ' ')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-white/10 bg-dark-800/50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowCurriculum(false)}
+                  className="px-6 py-3 rounded-xl bg-dark-700 text-white font-medium hover:bg-dark-600 transition-colors"
+                >
+                  Close
+                </button>
+                <Link
+                  href={`/personalities?lang=${selectedLanguage.id}`}
+                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-primary-500 to-purple-500 text-white font-bold hover:scale-105 active:scale-95 transition-all shadow-glow-md"
+                >
+                  Start Now
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
