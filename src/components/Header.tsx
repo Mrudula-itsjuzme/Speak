@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mic, User, LogOut, LayoutDashboard, Languages, Users } from 'lucide-react';
+import { Mic, User, LogOut, LayoutDashboard, Users } from 'lucide-react';
 import { getLoggedInUser, logout, getUser, User as AppUser } from '@/lib/memory/sessionStore';
 
 export default function Header() {

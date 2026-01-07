@@ -89,7 +89,7 @@ export async function generateContentSafe(prompt: string): Promise<string | null
                 let errorData;
                 try {
                     errorData = JSON.parse(errorText);
-                } catch (e) {
+                } catch {
                     errorData = { message: errorText };
                 }
 
@@ -160,10 +160,11 @@ export async function generateWithMessagesSafe(
                 console.log(`✅ Success with model: ${data.model}`);
                 return content;
             }
-        } catch (error) {
-            console.warn(`Failed with model ${modelName}:`, error);
-            continue;
+        } catch {
+
+            throw new Error("OpenRouter failed");
         }
+
     }
 
     console.error('❌ All models failed');

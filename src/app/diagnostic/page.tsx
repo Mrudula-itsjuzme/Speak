@@ -154,8 +154,8 @@ export default function DiagnosticPage() {
                         {logs.length === 0 ? (
                             <p className="text-gray-500">No logs yet. Click &quot;Start Connection&quot; to begin.</p>
                         ) : (
-                            logs.map((log, i) => (
-                                <div key={i} className="mb-1">
+                            logs.map((log, index) => (
+                                <div key={index} className="mb-1">
                                     {log}
                                 </div>
                             ))

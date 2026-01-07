@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import {
   Mic, MicOff, Phone, PhoneOff, Volume2, Languages as LanguagesIcon,
-  User, X
+  User as UserIcon, X
 } from 'lucide-react';
 
 import { useConversation } from '@11labs/react';
@@ -190,12 +190,11 @@ function LearnPageContent() {
   useEffect(() => {
     if (isConnected && agentConfig) {
       // Try to send context to the agent
-      const contextMessage = `System Update: ${agentConfig.systemPrompt}`;
+      // const contextMessage = `System Update: ${agentConfig.systemPrompt}`;
 
       // Attempt to send hidden context message if supported
-      // @ts-ignore
+      // @ts-expect-error - sendMessage is optional in this version of the SDK
       if (typeof conversation.sendMessage === 'function') {
-        // @ts-ignore
         // conversation.sendMessage(contextMessage);
       }
     }
@@ -213,8 +212,7 @@ function LearnPageContent() {
 
       await conversation.startSession({
         agentId: agentId,
-        // @ts-ignore
-        connectionType: 'websocket',
+        connectionType: 'websocket' as const,
         dynamicVariables: {
           language: lang,
           personality: personality,
@@ -227,7 +225,7 @@ function LearnPageContent() {
     } catch (error) {
       console.error('Failed to start conversation:', error);
     }
-  }, [conversation, agentConfig, lang, personality, level, topic, messages]);
+  }, [conversation, lang, personality, level, topic, messages]);
 
   const endConversation = useCallback(async () => {
     if (isEnding) return;
@@ -244,7 +242,7 @@ function LearnPageContent() {
     } finally {
       // isEnding and isConnected will be handled by onDisconnect
       // Always try to save session to memory even if WebSocket fails
-      await saveSessionToMemory(messages, lang, personality, 'Immersive Daily Conversation');
+      await saveSessionToMemory(messages, lang, personality);
     }
   }, [conversation, messages, lang, personality, saveSessionToMemory, isEnding]);
 
@@ -303,7 +301,6 @@ function LearnPageContent() {
 
     // Send text to AI
     if (isConnected && conversation.status === 'connected') {
-      // @ts-ignore
       await conversation.sendUserMessage(inputValue);
     } else {
       // Use text-only chat
@@ -421,14 +418,14 @@ function LearnPageContent() {
                     {message.translation && (
                       <div className="mt-2 p-3 rounded-xl bg-primary-500/10 border border-primary-500/20 text-sm italic text-primary-300 shadow-inner">
                         <span className="opacity-50 text-[10px] uppercase font-bold block mb-1">Translation ({nativeLanguage})</span>
-                        "{message.translation}"
+                        &quot;{message.translation}&quot;
                       </div>
                     )}
                   </div>
 
                   {message.type === 'user' && (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-400 flex-shrink-0 flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
+                      <UserIcon className="w-5 h-5 text-white" />
                     </div>
                   )}
                 </motion.div>
@@ -571,14 +568,14 @@ function LearnPageContent() {
                 {/* Core Visualizer */}
                 <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-primary-500 to-purple-600 shadow-glow-lg flex items-center justify-center z-10">
                   <div className="flex items-end gap-1 h-8">
-                    {[...Array(5)].map((_, i) => (
+                    {[...Array(5)].map((_, index) => (
                       <motion.div
-                        key={i}
+                        key={index}
                         animate={{
                           height: isConnected && !isMuted ? [8, 32, 8] : 4
                         }}
                         transition={{
-                          duration: 0.5 + i * 0.1,
+                          duration: 0.5 + index * 0.1,
                           repeat: Infinity,
                           ease: "easeInOut"
                         }}

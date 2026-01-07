@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mic, Mail, Lock, User, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { registerUser, setLoggedInUser } from '@/lib/memory/sessionStore';
 
 export default function SignupPage() {
@@ -29,7 +29,7 @@ export default function SignupPage() {
             });
             setLoggedInUser(email);
             router.push('/');
-        } catch (err) {
+        } catch {
             setError('Failed to create account. Please try again.');
         } finally {
             setIsLoading(false);

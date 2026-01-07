@@ -65,7 +65,7 @@ export default function NativeLanguagePage() {
               What is your native language?
             </h1>
             <p className="text-xl text-gray-400">
-              We'll use this to tailor your learning experience and provide translations when needed.
+              We&apos;ll use this to tailor your learning experience and provide translations when needed.
             </p>
           </motion.div>
 
@@ -78,11 +78,10 @@ export default function NativeLanguagePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => setSelectedLanguage(language)}
-                className={`glass rounded-xl p-4 cursor-pointer transition-all flex items-center gap-4 ${
-                  selectedLanguage?.id === language.id
+                className={`glass rounded-xl p-4 cursor-pointer transition-all flex items-center gap-4 ${selectedLanguage?.id === language.id
                     ? 'card-selected ring-2 ring-primary-500 bg-primary-500/10'
                     : 'hover:bg-white/5 hover:border-white/20'
-                }`}
+                  }`}
               >
                 <span className="text-3xl">{language.flag}</span>
                 <div>
@@ -111,7 +110,7 @@ export default function NativeLanguagePage() {
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleContinue}
             className="btn-primary px-8 py-3 flex items-center gap-2 text-lg"
           >

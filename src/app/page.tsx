@@ -36,8 +36,8 @@ export default function LandingPage() {
             <div className="flex items-center gap-6 text-sm text-dark-500">
               <div className="flex items-center gap-2">
                 <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 border-2 border-white" />
+                  {[1, 2, 3, 4].map((index) => (
+                    <div key={index} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-purple-400 border-2 border-white" />
                   ))}
                 </div>
                 <span className="font-semibold text-dark-900">10k+</span> Active Learners

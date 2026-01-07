@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, Mic, Smile, Heart, Zap, BookOpen, Coffee, Leaf, Trophy, Palette } from 'lucide-react';
+import { ArrowRight, Smile, Heart, Zap, BookOpen, Coffee, Leaf, Trophy, Palette } from 'lucide-react';
 
 interface Personality {
   id: string;
@@ -91,7 +91,7 @@ const personalities: Personality[] = [
   }
 ];
 
-export default function PersonalitiesPage() {
+function PersonalitiesContent() {
   const searchParams = useSearchParams();
   const selectedLang = searchParams.get('lang') || 'spanish';
   const [selectedPersonality, setSelectedPersonality] = useState<Personality | null>(null);
@@ -128,11 +128,10 @@ export default function PersonalitiesPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.05 }}
                 onClick={() => setSelectedPersonality(personality)}
-                className={`glass rounded-2xl p-4 cursor-pointer transition-all ${
-                  selectedPersonality?.id === personality.id
-                    ? 'card-selected'
-                    : 'hover:border-white/20'
-                }`}
+                className={`glass rounded-2xl p-4 cursor-pointer transition-all ${selectedPersonality?.id === personality.id
+                  ? 'card-selected'
+                  : 'hover:border-white/20'
+                  }`}
               >
                 {/* Avatar */}
                 <div className={`w-full aspect-square rounded-xl bg-gradient-to-br ${personality.avatarBg} mb-4 flex items-center justify-center relative overflow-hidden`}>
@@ -140,7 +139,7 @@ export default function PersonalitiesPage() {
                   <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center">
                     <div className="text-4xl">{personality.traits[0]}</div>
                   </div>
-                  
+
                   {/* Selected indicator */}
                   {selectedPersonality?.id === personality.id && (
                     <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
@@ -204,7 +203,7 @@ export default function PersonalitiesPage() {
                 </p>
               </div>
             </div>
-            <Link 
+            <Link
               href={`/learn?lang=${selectedLang}&personality=${selectedPersonality.id}`}
               className="btn-primary px-8 py-3 flex items-center gap-2"
             >
@@ -214,5 +213,13 @@ export default function PersonalitiesPage() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+export default function PersonalitiesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-dark-900 flex items-center justify-center text-white">Loading...</div>}>
+      <PersonalitiesContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
-interface SessionMemory {
+export interface SessionMemory {
   id: string;
   startTime: number;
   endTime?: number;
@@ -27,6 +27,14 @@ export interface User {
   createdAt: number;
 }
 
+export interface UserProfile {
+  id: string;
+  currentLevel: string;
+  totalSessions: number;
+  streakDays: number;
+  lastPracticeDate: number;
+}
+
 interface MisSpokeDB extends DBSchema {
   sessions: {
     key: string;
@@ -35,17 +43,19 @@ interface MisSpokeDB extends DBSchema {
   };
   userProfile: {
     key: string;
-    value: {
-      id: string;
-      currentLevel: string;
-      totalSessions: number;
-      streakDays: number;
-      lastPracticeDate: number;
-    };
+    value: UserProfile;
   };
   users: {
     key: string;
     value: User;
+  };
+  curriculumProgress: {
+    key: string;
+    value: {
+      lang: string;
+      items: { id: string; status: 'completed' | 'in-progress' | 'locked' }[];
+      lastUpdated: number;
+    };
   };
 }
 
@@ -73,6 +83,11 @@ export const getDB = () => {
         // Users store
         if (!db.objectStoreNames.contains('users')) {
           db.createObjectStore('users', { keyPath: 'email' });
+        }
+
+        // Curriculum progress store
+        if (!db.objectStoreNames.contains('curriculumProgress')) {
+          db.createObjectStore('curriculumProgress', { keyPath: 'lang' });
         }
       },
     });

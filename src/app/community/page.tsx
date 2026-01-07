@@ -123,10 +123,10 @@ export default function CommunityPage() {
                                 <Award className="w-6 h-6 text-yellow-500" /> Top Learners
                             </h2>
                             <div className="space-y-4">
-                                {TOP_LEARNERS.map((learner, i) => (
+                                {TOP_LEARNERS.map((learner, index) => (
                                     <div key={learner.name} className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-lg bg-gray-50 dark:bg-dark-800 flex items-center justify-center text-sm font-bold">
-                                            {i + 1}
+                                            {index + 1}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-sm truncate">{learner.name}</p>

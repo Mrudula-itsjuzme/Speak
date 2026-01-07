@@ -5,10 +5,13 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-    Trophy, Flame, Clock, Languages, ChevronRight,
-    Shield, Bell, HelpCircle, Save, Check, Mail, Settings, Calendar, User, LogOut
+    Trophy, Flame, Clock, ChevronRight,
+    Shield, Bell, HelpCircle, Save, Check, Mail, Settings, Calendar
 } from 'lucide-react';
-import { getUser, getLoggedInUser, logout, getAllSessions, getUserProfile, updateUser } from '@/lib/memory/sessionStore';
+import {
+    getUser, getLoggedInUser, getAllSessions,
+    getUserProfile, updateUser, type User, type SessionMemory, type UserProfile
+} from '@/lib/memory/sessionStore';
 import Header from '@/components/Header';
 
 const LANGUAGES = [
@@ -21,9 +24,9 @@ const LANGUAGES = [
 ];
 
 export default function ProfilePage() {
-    const [userData, setUserData] = useState<any>(null);
-    const [stats, setStats] = useState<any>(null);
-    const [sessions, setSessions] = useState<any[]>([]);
+    const [userData, setUserData] = useState<User | null>(null);
+    const [stats, setStats] = useState<UserProfile | null>(null);
+    const [sessions, setSessions] = useState<SessionMemory[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -45,10 +48,10 @@ export default function ProfilePage() {
             const profile = await getUserProfile();
             const allSessions = await getAllSessions();
 
-            setUserData(user);
+            setUserData(user || null);
             setNativeLang(user?.nativeLanguage || localStorage.getItem('nativeLanguage') || 'english');
             setLearningLang(user?.learningLanguage || 'spanish');
-            setStats(profile);
+            setStats(profile || null);
             setSessions(allSessions.reverse().slice(0, 5)); // Latest 5
         };
 
@@ -68,8 +71,8 @@ export default function ProfilePage() {
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
             }
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error(error);
         } finally {
             setIsSaving(false);
         }
@@ -190,7 +193,7 @@ export default function ProfilePage() {
 
                             {sessions.length > 0 ? (
                                 <div className="space-y-4">
-                                    {sessions.map((session, i) => (
+                                    {sessions.map((session) => (
                                         <div key={session.id} className="flex items-center gap-4 p-4 rounded-2xl bg-dark-800/50 border border-white/5 hover:border-primary-500/20 transition-all group">
                                             <div className="w-12 h-12 rounded-xl bg-dark-700 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
                                                 {session.language === 'spanish' && '🇪🇸'}

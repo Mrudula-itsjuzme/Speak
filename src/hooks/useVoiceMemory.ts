@@ -16,8 +16,7 @@ export function useVoiceMemory() {
   const endSession = useCallback(async (
     messages: ChatMessage[],
     language: string,
-    personalityId: string,
-    currentTopic: string
+    personalityId: string
   ) => {
     if (messages.length === 0) return;
 

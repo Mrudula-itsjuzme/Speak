@@ -236,8 +236,8 @@ export default function LanguagesPage() {
 
                 {/* Features */}
                 <div className="space-y-2">
-                  {language.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-gray-300">
+                  {language.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2 text-sm text-gray-300">
                       <Flame className="w-4 h-4 text-primary-400" />
                       <span>{feature}</span>
                     </div>
