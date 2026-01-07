@@ -1,4 +1,4 @@
-import { generateContentSafe } from '@/lib/openrouter/client';
+import { generateContentSafe, extractJSON } from '@/lib/openrouter/client';
 import { NextResponse } from 'next/server';
 
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     if (!text) throw new Error('Failed to translate');
 
     // Clean up markdown code blocks if present
-    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const cleanText = extractJSON(text);
 
     const translations = JSON.parse(cleanText);
 

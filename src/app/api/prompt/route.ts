@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateContentSafe } from '@/lib/openrouter/client';
+import { generateContentSafe, extractJSON } from '@/lib/openrouter/client';
 
 
 export async function POST(request: Request) {
@@ -56,12 +56,12 @@ export async function POST(request: Request) {
     }
 
     // Clean up markdown code blocks if present
-    const cleanText = text.replace(/```json\n|\n```/g, '').trim();
+    const cleanText = extractJSON(text);
 
     try {
       const data = JSON.parse(cleanText);
       return NextResponse.json(data);
-    } catch (e) {
+    } catch {
       console.error('Failed to parse Gemini response:', text);
       return NextResponse.json({
         systemPrompt: `You are a ${personality} ${language} tutor. Teach ${topic}.`,

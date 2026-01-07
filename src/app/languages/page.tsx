@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, Clock, Users, Flame, BookOpen, Mic, PenTool, X, CheckCircle, PlayCircle, Lock } from 'lucide-react';
+import { ArrowRight, Clock, Users, Flame } from 'lucide-react';
 import Header from '@/components/Header';
 
 interface Language {

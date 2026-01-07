@@ -1,9 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Users, TrendingUp, MessageCircle, Heart, Globe, Search, MessageSquare, Award } from 'lucide-react';
+import { Users, TrendingUp, MessageCircle, Heart, Globe, MessageSquare, Award } from 'lucide-react';
 import Header from '@/components/Header';
-import Image from 'next/image';
 
 const TOP_LEARNERS = [
     { name: 'Yuki Sato', language: 'Italian', xp: 12450, streak: 45, level: 'Gold' },

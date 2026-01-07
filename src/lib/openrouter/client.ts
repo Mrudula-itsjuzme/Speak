@@ -19,14 +19,15 @@ if (typeof window === 'undefined') { // Server-side only
 // Available models to try in order of preference
 // Optimized based on actual availability and performance
 const modelsToTry = [
-    'google/gemini-2.0-flash-exp:free',      // Free, fast (may have rate limits)
-    'openai/gpt-4o-mini',                     // Paid, reliable, good quality
-    'meta-llama/llama-3.1-8b-instruct:free', // Free fallback
-    'anthropic/claude-3.5-sonnet',           // Paid, highest quality (requires credits)
-    'google/gemini-flash-1.5-8b'             // Alternative Gemini model
-];
-
-interface OpenRouterMessage {
+    'google/gemini-2.0-flash-exp:free',       // Free, fast, smart
+    'google/gemini-2.0-flash-thinking-exp',    // Valid ID (usually paid)
+    'google/gemini-flash-1.5-8b',             // Valid ID
+    'meta-llama/llama-3.1-8b-instruct',       // Standard ID (try without :free)
+    'mistralai/mistral-7b-instruct:free',     // Reliable fallback
+    'huggingfaceh4/zephyr-7b-beta:free',      // Fast fallback
+    'openai/gpt-4o-mini',                     // High quality backup (paid)
+    'anthropic/claude-3.5-sonnet',            // Premium backup (paid)
+]; interface OpenRouterMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
 }
@@ -43,6 +44,14 @@ interface OpenRouterResponse {
         completion_tokens: number;
         total_tokens: number;
     };
+}
+
+/**
+ * Robustly extract JSON from AI response
+ */
+export function extractJSON(text: string): string {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    return jsonMatch ? jsonMatch[0] : text;
 }
 
 /**
@@ -88,7 +97,7 @@ export async function generateContentSafe(prompt: string): Promise<string | null
 
                 // If rate limited, try next model immediately
                 if (response.status === 429) {
-                    console.warn(`⏱️  Rate limited on ${modelName}, trying next model...`);
+                    console.warn(`⚠️  Rate limit (429) on ${modelName}. Switching to next backup model...`);
                     continue;
                 }
                 continue;
@@ -190,8 +199,8 @@ export async function generateSessionSummary(transcript: string) {
     if (!text) return null;
 
     try {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+        const cleanText = extractJSON(text);
+        return JSON.parse(cleanText);
     } catch (error) {
         console.error('Summary parsing failed:', error);
         return null;

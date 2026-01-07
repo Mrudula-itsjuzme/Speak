@@ -4,12 +4,10 @@
 import { useState, useCallback, useEffect, Suspense } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
-  Mic, MicOff, Phone, PhoneOff, Volume2, Languages,
-  CheckCircle, PlayCircle, Lock, MoreVertical,
-  LogOut, User, X, Send
+  Mic, MicOff, Phone, PhoneOff, Volume2, Languages as LanguagesIcon,
+  User, X
 } from 'lucide-react';
 
 import { useConversation } from '@11labs/react';
@@ -41,7 +39,7 @@ function LearnPageContent() {
     const loadSessionData = async () => {
       const lastSession = await getLatestSession(lang);
       if (lastSession && lastSession.messages.length > 0) {
-        setMessages(lastSession.messages.map((m: any) => ({
+        setMessages(lastSession.messages.map((m: { role: string; content: string; timestamp: number; correction?: string }) => ({
           id: uuidv4(),
           type: m.role as 'ai' | 'user',
           content: m.content,
@@ -67,10 +65,9 @@ function LearnPageContent() {
   const [inputValue, setInputValue] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
 
   const [agentConfig, setAgentConfig] = useState<{ systemPrompt: string; firstMessage: string } | null>(null);
-  const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
-  const [isAITyping, setIsAITyping] = useState(false);
 
   const [nativeLanguage, setNativeLanguage] = useState('English');
   const [uiTranslations, setUiTranslations] = useState<Record<string, string>>({
@@ -121,7 +118,6 @@ function LearnPageContent() {
   // Fetch dynamic prompt from Gemini
   useEffect(() => {
     const fetchPrompt = async () => {
-      setIsLoadingPrompt(true);
       const nativeLang = localStorage.getItem('nativeLanguage') || 'English';
       // setNativeLanguage(nativeLang); // Already set in fetchTranslations
       try {
@@ -153,8 +149,6 @@ function LearnPageContent() {
         });
       } catch (error) {
         console.error('Failed to fetch prompt:', error);
-      } finally {
-        setIsLoadingPrompt(false);
       }
     };
 
@@ -184,7 +178,7 @@ function LearnPageContent() {
     }
   });
 
-  const { endSession: saveSessionToMemory } = useVoiceMemory();
+  const { endSession: saveSessionToMemory, isSaving } = useVoiceMemory();
 
   // Send initial context when connected
   useEffect(() => {
@@ -219,19 +213,34 @@ function LearnPageContent() {
           language: lang,
           personality: personality,
           level: level,
-          topic: topic
+          topic: topic,
+          // Pass brief history context
+          history: messages.slice(-10).map(m => `${m.type === 'user' ? 'User' : 'AI'}: ${m.content}`).join('\n')
         }
       });
     } catch (error) {
       console.error('Failed to start conversation:', error);
     }
-  }, [conversation, agentConfig, lang]);
+  }, [conversation, agentConfig, lang, personality, level, topic, messages]);
 
   const endConversation = useCallback(async () => {
-    await conversation.endSession();
-    // Save session to memory
-    await saveSessionToMemory(messages, lang, personality, 'Immersive Daily Conversation');
-  }, [conversation, messages, lang, personality, saveSessionToMemory]);
+    if (isEnding) return;
+    setIsEnding(true);
+
+    try {
+      // Try to end session gracefully
+      if (conversation.status === 'connected') {
+        await conversation.endSession();
+      }
+    } catch (error) {
+      console.warn('Caught WebSocket error during disconnect (expected):', error);
+    } finally {
+      setIsConnected(false);
+      setIsEnding(false);
+      // Always try to save session to memory even if WebSocket fails
+      await saveSessionToMemory(messages, lang, personality, 'Immersive Daily Conversation');
+    }
+  }, [conversation, messages, lang, personality, saveSessionToMemory, isEnding]);
 
   const toggleMute = useCallback(() => {
     if (isMuted) {
@@ -287,12 +296,11 @@ function LearnPageContent() {
     setInputValue('');
 
     // Send text to AI
-    if (isConnected) {
+    if (isConnected && conversation.status === 'connected') {
       // @ts-ignore
       await conversation.sendUserMessage(inputValue);
     } else {
       // Use text-only chat
-      setIsAITyping(true);
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -331,7 +339,6 @@ function LearnPageContent() {
       } catch (error) {
         console.error('Failed to send text message:', error);
       } finally {
-        setIsAITyping(false);
       }
     }
 
@@ -400,7 +407,7 @@ function LearnPageContent() {
                           disabled={message.isTranslating}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-dark-800 text-gray-400 hover:text-white text-sm transition-colors"
                         >
-                          <Languages className="w-4 h-4" />
+                          <LanguagesIcon className="w-4 h-4" />
                           {message.isTranslating ? 'Translating...' : t('translate')}
                         </button>
                       </div>
@@ -453,7 +460,7 @@ function LearnPageContent() {
                   }`}
               >
                 <Phone className="w-5 h-5" />
-                {isConnected ? t('connected') : t('join')}
+                {isEnding || isSaving ? 'Saving...' : (isConnected ? t('connected') : t('join'))}
               </button>
 
               <button
@@ -465,7 +472,7 @@ function LearnPageContent() {
                   }`}
               >
                 <PhoneOff className="w-5 h-5" />
-                {t('leave')}
+                {isEnding || isSaving ? '...' : t('leave')}
               </button>
             </div>
           </div>
@@ -523,7 +530,7 @@ function LearnPageContent() {
                           disabled={message.isTranslating}
                           className="mt-2 text-xs text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
                         >
-                          <Languages className="w-3 h-3" />
+                          <LanguagesIcon className="w-3 h-3" />
                           {message.isTranslating ? 'Translating...' : (message.translation ? 'Re-translate' : 'Translate')}
                         </button>
                       )}
@@ -593,9 +600,11 @@ function LearnPageContent() {
                   </button>
                   <button
                     onClick={endConversation}
-                    className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all shadow-lg"
+                    disabled={isEnding || isSaving}
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg ${isEnding || isSaving ? 'bg-gray-600' : 'bg-red-600 hover:bg-red-700'
+                      }`}
                   >
-                    <PhoneOff className="w-6 h-6" />
+                    {isEnding || isSaving ? <span className="animate-spin text-white">⏳</span> : <PhoneOff className="w-6 h-6" />}
                   </button>
                 </div>
               </div>

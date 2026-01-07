@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Mic, Globe, Sparkles, Users, MessageCircle, Plane, Coffee, Briefcase, ShoppingBag, Utensils } from 'lucide-react';
 import Header from '@/components/Header';

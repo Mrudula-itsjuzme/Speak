@@ -18,6 +18,15 @@ interface SessionMemory {
   emotions: string[];
 }
 
+export interface User {
+  email: string;
+  password?: string;
+  name: string;
+  nativeLanguage?: string;
+  learningLanguage?: string;
+  createdAt: number;
+}
+
 interface MisSpokeDB extends DBSchema {
   sessions: {
     key: string;
@@ -36,14 +45,7 @@ interface MisSpokeDB extends DBSchema {
   };
   users: {
     key: string;
-    value: {
-      email: string;
-      password?: string; // In a real app, this would be hashed
-      name: string;
-      nativeLanguage?: string;
-      learningLanguage?: string;
-      createdAt: number;
-    };
+    value: User;
   };
 }
 
@@ -142,7 +144,7 @@ export const getUser = async (email: string) => {
   return db.get('users', email);
 };
 
-export const updateUser = async (email: string, updates: any) => {
+export const updateUser = async (email: string, updates: Partial<User>) => {
   const db = await getDB();
   const user = await db.get('users', email);
   if (user) {

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
             }))
         ];
 
-        // @ts-ignore
+        // @ts-expect-error - OpenRouter types mismatch with client
         const text = await generateWithMessagesSafe(openRouterMessages);
 
         if (!text) {

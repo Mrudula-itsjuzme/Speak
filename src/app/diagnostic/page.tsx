@@ -20,13 +20,13 @@ export default function DiagnosticPage() {
         onDisconnect: () => {
             addLog('❌ Disconnected from ElevenLabs');
         },
-        onMessage: (message: any) => {
+        onMessage: (message: unknown) => {
             addLog(`📨 Message received: ${JSON.stringify(message)}`);
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
             addLog(`❌ Error: ${JSON.stringify(error)}`);
         },
-        onModeChange: (mode: any) => {
+        onModeChange: (mode: { mode: string }) => {
             addLog(`🔄 Mode changed: ${JSON.stringify(mode)}`);
         }
     });
@@ -40,10 +40,15 @@ export default function DiagnosticPage() {
             addLog(`🔍 Attempting to connect to agent: ${agentId}`);
             await conversation.startSession({
                 agentId: agentId,
+                connectionType: 'websocket',
             });
             addLog('✅ Session started');
-        } catch (error: any) {
-            addLog(`❌ Failed: ${error.message}`);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                addLog(`❌ Failed: ${error.message}`);
+            } else {
+                addLog(`❌ Failed: ${String(error)}`);
+            }
         }
     };
 
@@ -51,23 +56,25 @@ export default function DiagnosticPage() {
         try {
             await conversation.endSession();
             addLog('✅ Session ended');
-        } catch (error: any) {
-            addLog(`❌ Failed to end: ${error.message}`);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                addLog(`❌ Failed to end: ${error.message}`);
+            }
         }
     };
 
     const sendTestMessage = async () => {
         try {
-            // @ts-ignore
             if (typeof conversation.sendUserMessage === 'function') {
-                // @ts-ignore
                 await conversation.sendUserMessage('Hello, can you hear me?');
                 addLog('✅ Test message sent');
             } else {
                 addLog('⚠️ sendUserMessage not available');
             }
-        } catch (error: any) {
-            addLog(`❌ Failed to send: ${error.message}`);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                addLog(`❌ Failed to send: ${error.message}`);
+            }
         }
     };
 
@@ -145,7 +152,7 @@ export default function DiagnosticPage() {
                     </div>
                     <div className="bg-gray-900 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
                         {logs.length === 0 ? (
-                            <p className="text-gray-500">No logs yet. Click "Start Connection" to begin.</p>
+                            <p className="text-gray-500">No logs yet. Click &quot;Start Connection&quot; to begin.</p>
                         ) : (
                             logs.map((log, i) => (
                                 <div key={i} className="mb-1">
@@ -161,9 +168,9 @@ export default function DiagnosticPage() {
                     <h3 className="text-lg font-bold mb-2">📝 Instructions</h3>
                     <ol className="list-decimal list-inside space-y-2 text-sm">
                         <li>Make sure your Agent ID is set above</li>
-                        <li>Click "Start Connection" - you'll be asked for microphone permission</li>
+                        <li>Click &quot;Start Connection&quot; - you&apos;ll be asked for microphone permission</li>
                         <li>Watch the logs for connection status</li>
-                        <li>Try speaking or click "Send Test Message"</li>
+                        <li>Try speaking or click &quot;Send Test Message&quot;</li>
                         <li>Check if you get a response in the logs</li>
                     </ol>
                 </div>

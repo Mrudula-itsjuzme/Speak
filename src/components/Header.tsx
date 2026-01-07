@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mic, User, LogOut, LayoutDashboard, Languages, Users } from 'lucide-react';
-import { getLoggedInUser, logout, getUser } from '@/lib/memory/sessionStore';
+import { getLoggedInUser, logout, getUser, User as AppUser } from '@/lib/memory/sessionStore';
 
 export default function Header() {
-    const [user, setUser] = useState<any>(null);
+    const [user, setUser] = useState<AppUser | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -15,7 +15,7 @@ export default function Header() {
             const email = getLoggedInUser();
             if (email) {
                 const userData = await getUser(email);
-                setUser(userData);
+                setUser(userData || null);
             } else {
                 setUser(null);
             }
