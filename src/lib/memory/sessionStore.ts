@@ -1,4 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { supabase } from '../supabase/client';
 
 export interface SessionMemory {
   id: string;
@@ -166,18 +167,25 @@ export const getLatestSession = async (lang: string) => {
   return allSessions.reverse().find(s => s.language === lang);
 };
 
-import { hashPassword } from '../utils/security';
+// Auth helpers (migrated to Supabase)
+export const registerUser = async (user: { name: string; email: string; password: string }) => {
+  const { data, error } = await supabase.auth.signUp({
+    email: user.email,
+    password: user.password,
+    options: {
+      data: {
+        name: user.name
+      }
+    }
+  });
 
-// Auth helpers
-export const registerUser = async (user: MisSpokeDB['users']['value']) => {
-  const db = await getDB();
-  const hashedPassword = user.password ? await hashPassword(user.password) : undefined;
-  await db.put('users', { ...user, password: hashedPassword, createdAt: Date.now() });
+  if (error) throw error;
+  return data;
 };
 
 export const getUser = async (email: string) => {
-  const db = await getDB();
-  return db.get('users', email);
+  const { data } = await supabase.auth.getUser();
+  return data.user?.email === email ? data.user : null;
 };
 
 export const updateUser = async (email: string, updates: Partial<User>) => {
@@ -188,14 +196,17 @@ export const updateUser = async (email: string, updates: Partial<User>) => {
   }
 };
 
-export const setLoggedInUser = (email: string) => {
-  localStorage.setItem('currentUser', email);
+export const setLoggedInUser = async () => {
+  // Session is automatically managed by Supabase
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.email || null;
 };
 
-export const getLoggedInUser = () => {
-  return localStorage.getItem('currentUser');
+export const getLoggedInUser = async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.email || null;
 };
 
-export const logout = () => {
-  localStorage.removeItem('currentUser');
+export const logout = async () => {
+  await supabase.auth.signOut();
 };

@@ -5,8 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mic, Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
-import { getUser, setLoggedInUser } from '@/lib/memory/sessionStore';
-import { verifyPassword } from '@/lib/utils/security';
+import { supabase } from '@/lib/supabase/client';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -21,15 +20,21 @@ export default function LoginPage() {
         setError('');
 
         try {
-            const user = await getUser(email);
-            if (user && user.password && await verifyPassword(password, user.password)) {
-                setLoggedInUser(email);
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+            if (data.user) {
                 router.push('/');
-            } else {
-                setError('Invalid email or password');
             }
-        } catch {
-            setError('An error occurred during login');
+        } catch (err) {
+            let message = err instanceof Error ? err.message : 'Invalid email or password';
+            if (message.includes('Email not confirmed')) {
+                message = 'Please check your email to confirm your account before logging in.';
+            }
+            setError(message);
         } finally {
             setIsLoading(false);
         }

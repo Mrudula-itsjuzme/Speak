@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { generateContentSafe, extractJSON } from '@/lib/openrouter/client';
 
 export async function POST(request: Request) {
+  console.log('DEBUG: /api/prompt hit');
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+  console.log('DEBUG: API Key present:', !!apiKey);
+
   let language, personality, topic, level;
 
   try {
@@ -28,7 +32,6 @@ export async function POST(request: Request) {
     personality = body.personality;
     topic = body.topic;
     level = body.level;
-    const historyContext = body.historyContext || '';
 
     if (!language) {
       return NextResponse.json({ error: 'Language is required' }, { status: 400 });
@@ -43,18 +46,13 @@ export async function POST(request: Request) {
       3. User's Native Language: ${nativeLanguage} (Only for translations/explanations).
       4. Level: ${level || 'Beginner'}
       5. Current Topic: ${topic || 'Immersive Daily Conversation'}
-      ${historyContext ? `6. Previous Context: ${historyContext}` : ''}
-      7. INSTRUCTIONS:
-         - Output valid JSON only.
-         - NO Markdown.
-         - "systemPrompt": A detailed instruction set for the AI.
-         - "firstMessage": The opening greeting in ${language}.
-         - "accent": "native" (This is crucial).
-
+      
+      CRITICAL: Output valid JSON only. NO Markdown. NO comments.
+      
       Output Format:
       {
-        "systemPrompt": "...",
-        "firstMessage": "..."
+        "systemPrompt": "A detailed instruction set for the AI tutor",
+        "firstMessage": "The opening greeting in ${language}"
       }
     `;
 

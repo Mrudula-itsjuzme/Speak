@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
-import { registerUser, setLoggedInUser } from '@/lib/memory/sessionStore';
+import { registerUser } from '@/lib/memory/sessionStore';
 
 export default function SignupPage() {
     const [name, setName] = useState('');
@@ -14,6 +14,7 @@ export default function SignupPage() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,20 +22,45 @@ export default function SignupPage() {
         setError('');
 
         try {
-            await registerUser({
-                name,
-                email,
-                password,
-                createdAt: Date.now()
-            });
-            setLoggedInUser(email);
-            router.push('/');
-        } catch {
-            setError('Failed to create account. Please try again.');
+            const { session } = await registerUser({ name, email, password });
+            if (!session) {
+                setShowConfirmation(true);
+            } else {
+                router.push('/');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create account. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
+
+    if (showConfirmation) {
+        return (
+            <div className="min-h-screen bg-dark-900 dark flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-purple-900/20 via-dark-900 to-dark-900">
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="w-full max-w-md glass rounded-3xl p-8 border border-white/10 shadow-glow-md text-center"
+                >
+                    <div className="w-16 h-16 bg-primary-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Mail className="w-8 h-8 text-primary-400" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-4">Check your email</h2>
+                    <p className="text-gray-400 mb-8">
+                        We've sent a verification link to <span className="text-white font-medium">{email}</span>.
+                        Please confirm your email to start your journey.
+                    </p>
+                    <Link
+                        href="/login"
+                        className="w-full inline-flex items-center justify-center py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium border border-white/10 transition-all font-medium"
+                    >
+                        Back to Login
+                    </Link>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-dark-900 dark flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_left,_var(--tw-gradient-stops))] from-purple-900/20 via-dark-900 to-dark-900">

@@ -40,7 +40,7 @@ export default function NativeLanguagePage() {
     if (selectedLanguage) {
       localStorage.setItem('nativeLanguage', selectedLanguage.name);
 
-      const email = getLoggedInUser();
+      const email = await getLoggedInUser();
       if (email) {
         await updateUser(email, { nativeLanguage: selectedLanguage.name });
       }

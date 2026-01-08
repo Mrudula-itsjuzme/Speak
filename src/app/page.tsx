@@ -3,6 +3,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowRight, Mic, Globe, Sparkles, Users, MessageCircle, Plane, Coffee, Briefcase, ShoppingBag, Utensils, Clock, Flame } from 'lucide-react';
 import Header from '@/components/Header';
 
@@ -89,7 +90,7 @@ export default function LandingPage() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="text-[12vw] md:text-[180px] leading-none font-medium tracking-tighter text-[#2a2a2a] dark:text-white text-center mb-12"
+          className="text-[12vw] md:text-[180px] leading-none font-medium tracking-tighter text-[#4a3b2a] dark:text-[#f8f6f3] text-center mb-12"
         >
           MisSpoke
         </motion.h1>
@@ -102,7 +103,7 @@ export default function LandingPage() {
           className="relative z-10"
         >
           <Link href="/native-language" className="group relative">
-            <div className="absolute inset-0 bg-gray-800 rounded-full blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
+            <div className="absolute inset-0 bg-primary-900 rounded-full blur-xl opacity-10 group-hover:opacity-20 transition-opacity" />
             <div className="relative bg-[#A89B93] text-[#2a2a2a] px-12 py-4 rounded-full text-xl font-semibold shadow-2xl hover:scale-105 transition-transform border border-black/5 flex items-center gap-3">
               Master a New Language, Just by Speaking!
             </div>
@@ -110,71 +111,25 @@ export default function LandingPage() {
         </motion.div>
 
         {/* Language Cards Grid - Overlapping bottom */}
+        {/* Hero CTA instead of Cards */}
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
+          initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.8 }}
-          className="mt-24 w-full max-w-[1400px] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-4"
+          className="mt-16 flex justify-center"
         >
-          {featuredLanguages.map((lang, i) => (
-            <div key={lang.code} className="group relative bg-[#1e293b] rounded-3xl p-6 border border-white/10 hover:-translate-y-2 transition-transform duration-500 shadow-2xl">
-              {/* Background Gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${lang.gradient} rounded-3xl opacity-50`} />
-
-              {/* Header */}
-              <div className="relative flex justify-between items-start mb-8">
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-1">{lang.name}</h3>
-                  <p className="text-gray-400 text-sm">{lang.sub}</p>
-                </div>
-                <span className="text-4xl font-bold text-white/5 select-none absolute -top-2 right-0">{lang.code}</span>
-              </div>
-
-              {/* Badge */}
-              <div className={`relative inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border mb-6 ${lang.levelColor}`}>
-                {lang.level}
-              </div>
-
-              {/* Stats */}
-              <div className="relative grid grid-cols-2 gap-4 mb-6">
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm font-medium text-gray-200">{lang.hours}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-400">
-                  <Users className="w-4 h-4" />
-                  <span className="text-sm font-medium text-gray-200">{lang.learners}</span>
-                </div>
-              </div>
-
-              {/* Popularity */}
-              <div className="relative mb-6">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-gray-400">Popularity</span>
-                  <span className="text-white font-bold">{lang.popularity}%</span>
-                </div>
-                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    whileInView={{ width: `${lang.popularity}%` }}
-                    transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
-                    className="h-full bg-primary-500 rounded-full"
-                  />
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="relative pt-4 border-t border-white/5 flex items-center gap-2 text-primary-400 text-xs font-bold uppercase tracking-wide">
-                <Flame className="w-3 h-3" />
-                {lang.feature}
-              </div>
-            </div>
-          ))}
+          <Link
+            href="/languages"
+            className="group relative inline-flex items-center gap-3 px-8 py-5 bg-[#8B6F47] text-white rounded-full text-xl font-bold shadow-2xl hover:bg-[#6f5839] hover:scale-105 transition-all duration-300"
+          >
+            Try MisSpoke for Free
+            <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </motion.div>
       </section>
 
       {/* Why MisSpoke Works */}
-      <section id="features" className="py-24 bg-white dark:bg-dark-800">
+      <section id="features" className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -217,9 +172,9 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-light rounded-2xl p-6 card-hover"
+                className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100 card-hover"
               >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center text-white mb-4">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white mb-4">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-bold text-dark-900 mb-2">{feature.title}</h3>
@@ -257,29 +212,36 @@ export default function LandingPage() {
               { icon: <ShoppingBag className="w-6 h-6" />, title: 'Shopping', image: 'shopping', difficulty: 'Beginner' },
               { icon: <MessageCircle className="w-6 h-6" />, title: 'Free Conversation', image: 'chat', difficulty: 'All Levels' },
             ].map((mission, index) => (
-              <motion.div
-                key={mission.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl aspect-[4/3] cursor-pointer card-hover"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-purple-600" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
-                      {mission.icon}
+              <Link href="/learn" key={mission.title}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="group relative overflow-hidden rounded-2xl aspect-[4/3] cursor-pointer card-hover"
+                >
+                  <Image
+                    src={`/missions/${mission.image}.png`}
+                    alt={mission.title}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+
+                  <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                        {mission.icon}
+                      </div>
+                      <span className="text-xs font-medium text-white/80 bg-white/20 px-2 py-1 rounded-full">
+                        {mission.difficulty}
+                      </span>
                     </div>
-                    <span className="text-xs font-medium text-white/80 bg-white/20 px-2 py-1 rounded-full">
-                      {mission.difficulty}
-                    </span>
+                    <h3 className="text-xl font-bold text-white">{mission.title}</h3>
                   </div>
-                  <h3 className="text-xl font-bold text-white">{mission.title}</h3>
-                </div>
-                <div className="absolute inset-0 bg-primary-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </motion.div>
+                  <div className="absolute inset-0 bg-primary-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </motion.div>
+              </Link>
             ))}
           </div>
         </div>
@@ -324,11 +286,11 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-light rounded-2xl p-6"
+                className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100"
               >
                 <p className="text-dark-600 mb-6 italic">&ldquo;{testimonial.quote}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-purple-400" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600" />
                   <div>
                     <p className="font-semibold text-dark-900">{testimonial.name}</p>
                     <p className="text-sm text-dark-500">{testimonial.role}</p>
@@ -347,7 +309,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-gradient-to-br from-primary-500 to-purple-600 rounded-3xl p-12 text-center text-white"
+            className="bg-gradient-to-br from-primary-500 to-primary-800 rounded-3xl p-12 text-center text-white"
           >
             <h2 className="text-4xl font-bold mb-4">Ready to speak with confidence?</h2>
             <p className="text-xl text-white/80 mb-8 max-w-2xl mx-auto">
@@ -364,7 +326,7 @@ export default function LandingPage() {
       <footer className="py-8 border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
               <Mic className="w-3 h-3 text-white" />
             </div>
             <span className="font-bold text-dark-900">MisSpoke</span>

@@ -72,13 +72,22 @@ export function tryParseJSON<T>(text: string): T | null {
     try {
         return JSON.parse(text);
     } catch {
-        // Simple repair: remove trailing commas
+        // Robust repair strategy
         try {
-            const repaired = text.replace(/,(\s*[}\]])/g, '$1');
+            // 1. Remove trailing commas
+            let repaired = text.replace(/,(\s*[}\]])/g, '$1');
+
+            // 2. Fix bad unicode escapes (e.g. \u043 -> \u0000 or just remove)
+            // Replaces \u followed by less than 4 hex digits with a placeholder
+            repaired = repaired.replace(/\\u(?![0-9a-fA-F]{4})/g, '');
+
+            // 3. Fix unescaped newlines in strings
+            repaired = repaired.replace(/(?<!\\)\n/g, '\\n');
+
             return JSON.parse(repaired);
         } catch (e) {
             console.warn('JSON Parse Error:', e);
-            console.warn('Failed Text:', text.substring(0, 100));
+            console.warn('Failed Text:', text.substring(0, 100)); // Log first 100 chars
             return null;
         }
     }
@@ -110,7 +119,8 @@ export async function generateContentSafe(prompt: string): Promise<string | null
                             role: 'user',
                             content: prompt
                         }
-                    ]
+                    ],
+                    max_tokens: 2000  // Ensure responses aren't truncated
                 })
             });
 

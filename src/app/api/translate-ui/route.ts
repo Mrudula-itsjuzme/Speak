@@ -37,7 +37,16 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({})); // Handle empty/invalid body safely
     const { targetLanguage } = body;
 
+    console.log('Translation request for language:', targetLanguage);
+
     if (!targetLanguage || targetLanguage === 'English') {
+      return NextResponse.json(uiKeys);
+    }
+
+    // Check if OpenRouter is available
+    const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    if (!OPENROUTER_API_KEY) {
+      console.warn('OpenRouter API key not available, returning English labels');
       return NextResponse.json(uiKeys);
     }
 
@@ -64,32 +73,35 @@ export async function POST(request: Request) {
 
     const text = await generateContentSafe(prompt);
 
-    if (!text) throw new Error('Failed to translate');
+    if (!text) {
+      console.error('OpenRouter returned null - all models may have failed or rate limited');
+      return NextResponse.json(uiKeys); // Fallback to English
+    }
 
     // Clean up markdown code blocks if present
     const cleanText = extractJSON(text);
 
-    console.log('DEBUG: Raw AI Text:', text.substring(0, 200));
-    console.log('DEBUG: Clean Text:', cleanText.substring(0, 200));
+    console.log('DEBUG: Raw AI Text:', text.substring(0, Math.min(1000, text.length)));
+    console.log('DEBUG: Clean Text:', cleanText.substring(0, Math.min(1000, cleanText.length)));
 
     // Try to parse with additional cleaning
-    let translations = tryParseJSON(cleanText);
+    let translations: Record<string, string> | null = tryParseJSON<Record<string, string>>(cleanText);
 
     // If failed, try additional cleaning strategies
     if (!translations) {
       console.warn('First parse failed, trying additional cleaning...');
-      
+
       // Strategy 1: Remove any BOM or invisible characters
       let cleaned = cleanText.replace(/^\uFEFF/, '').trim();
-      
+
       // Strategy 2: Try to find and extract just the object
       const objectMatch = cleaned.match(/\{[\s\S]*\}/);
       if (objectMatch) {
         cleaned = objectMatch[0];
       }
-      
-      translations = tryParseJSON(cleaned);
-      
+
+      translations = tryParseJSON<Record<string, string>>(cleaned);
+
       if (!translations) {
         console.error('Failed to parse translations after cleaning, falling back to English.');
         return NextResponse.json(uiKeys);
@@ -97,18 +109,20 @@ export async function POST(request: Request) {
     }
 
     // Validate that translations has the same keys
-    const missingKeys = Object.keys(uiKeys).filter(key => !(key in translations));
+    const missingKeys = Object.keys(uiKeys).filter(key => !(key in translations!));
     if (missingKeys.length > 0) {
       console.warn('Missing translated keys:', missingKeys);
       // Fill in missing keys with English
       missingKeys.forEach(key => {
-        translations[key] = uiKeys[key as keyof typeof uiKeys];
+        translations![key] = uiKeys[key as keyof typeof uiKeys];
       });
     }
 
     return NextResponse.json(translations);
   } catch (error) {
     console.error('Translation error:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     // Fallback to English
     return NextResponse.json(uiKeys);
   }

@@ -1,46 +1,36 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Search } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { getLoggedInUser, getUser } from '@/lib/memory/sessionStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 
 export default function Header() {
     const [user, setUser] = useState<{ name: string; email: string; learningLanguage?: string } | null>(null);
     const { t } = useTranslation();
     const pathname = usePathname();
 
-    const router = useRouter();
-
     useEffect(() => {
         const fetchUser = async () => {
-            const { data } = await supabase.auth.getSession();
-            if (data.session?.user) {
-                setUser({
-                    name: data.session.user.user_metadata.name || 'User',
-                    email: data.session.user.email || ''
-                });
-            } else {
-                setUser(null);
+            const email = getLoggedInUser();
+            if (email) {
+                const userData = await getUser(email);
+                if (userData) {
+                    setUser(userData);
+                }
             }
         };
         fetchUser();
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-            fetchUser();
-        });
-
-        return () => subscription.unsubscribe();
+        window.addEventListener('storage', fetchUser);
+        return () => window.removeEventListener('storage', fetchUser);
     }, []);
 
     const navItems = [
         { name: 'Home', path: '/' },
-        { name: 'Dashboard', path: '/languages' },
+        { name: 'Dashboard', path: '/profile' },
         { name: 'Community', path: '/community' }
     ];
 
@@ -79,22 +69,11 @@ export default function Header() {
                     <div className="h-6 w-px bg-white/10 mx-1" />
 
                     {user ? (
-                        <div className="flex items-center gap-2">
-                            <Link href="/profile" className="flex items-center gap-3 pl-2">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold border-2 border-dark-800 shadow-glow-sm">
-                                    {user.name.charAt(0)}
-                                </div>
-                            </Link>
-                            <button
-                                onClick={async () => {
-                                    await supabase.auth.signOut();
-                                    router.push('/login');
-                                }}
-                                className="px-4 py-2 rounded-full text-sm font-medium text-stone-400 hover:text-white hover:bg-white/5 transition-colors"
-                            >
-                                Logout
-                            </button>
-                        </div>
+                        <Link href="/profile" className="flex items-center gap-3 pl-2">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold border-2 border-dark-800 shadow-glow-sm">
+                                {user.name.charAt(0)}
+                            </div>
+                        </Link>
                     ) : (
                         <div className="flex items-center gap-2">
                             <Link href="/login" className="px-5 py-2 rounded-full text-sm font-bold text-white bg-white/5 hover:bg-white/10 transition-colors">

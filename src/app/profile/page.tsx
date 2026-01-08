@@ -45,19 +45,28 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const loadProfileData = async () => {
-            const email = getLoggedInUser();
+            const email = await getLoggedInUser();
             if (!email) {
                 router.push('/login');
                 return;
             }
 
-            const user = await getUser(email);
+            const supabaseUser = await getUser(email);
             const profile = await getUserProfile();
             const allSessions = await getAllSessions();
 
-            setUserData(user || null);
-            setNativeLang(user?.nativeLanguage || localStorage.getItem('nativeLanguage') || 'english');
-            setLearningLang(user?.learningLanguage || 'spanish');
+            // Map Supabase user to local User type
+            if (supabaseUser) {
+                setUserData({
+                    name: supabaseUser.user_metadata?.name || 'User',
+                    email: supabaseUser.email || email,
+                    createdAt: new Date(supabaseUser.created_at || Date.now()).getTime()
+                } as User);
+            }
+
+            // Language preferences are still in localStorage (can migrate to Supabase metadata later)
+            setNativeLang(localStorage.getItem('nativeLanguage') || 'english');
+            setLearningLang(localStorage.getItem('learningLanguage') || 'spanish');
             setPreferredPersonality(localStorage.getItem('selectedPersonality') || 'cheerful');
             setStats(profile || null);
             setSessions(allSessions.reverse().slice(0, 5)); // Latest 5
@@ -69,21 +78,16 @@ export default function ProfilePage() {
     const handleSettingsSave = async () => {
         setIsSaving(true);
         try {
-            const email = getLoggedInUser();
-            if (email) {
-                await updateUser(email, {
-                    nativeLanguage: nativeLang,
-                    learningLanguage: learningLang
-                });
-                localStorage.setItem('nativeLanguage', nativeLang);
-                localStorage.setItem('selectedPersonality', preferredPersonality);
+            // Save to localStorage (can migrate to Supabase metadata later)
+            localStorage.setItem('nativeLanguage', nativeLang);
+            localStorage.setItem('learningLanguage', learningLang);
+            localStorage.setItem('selectedPersonality', preferredPersonality);
 
-                // Force all tabs/components to update translations
-                window.dispatchEvent(new Event('storage'));
+            // Force all tabs/components to update translations
+            window.dispatchEvent(new Event('storage'));
 
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 3000);
-            }
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
         } catch (error) {
             console.error(error);
         } finally {
